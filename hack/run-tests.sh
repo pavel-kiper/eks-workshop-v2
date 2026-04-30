@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -x
 
 environment=$1
 module=$2
@@ -39,7 +39,16 @@ container_image='eks-workshop-test'
 
 (cd $SCRIPT_DIR/../testing && $CONTAINER_CLI build -q -t $container_image .)
 
-source $SCRIPT_DIR/lib/generate-aws-creds.sh
+if [ -n "${USE_CURRENT_USER:-}" ]; then
+  if [ -z "$AWS_ACCESS_KEY_ID" ]; then
+    echo "No AWS_ACCESS_KEY_ID found"
+    exit 1
+  fi
+  echo "Using current user credentials"
+  aws_credential_args="-e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY -e AWS_SESSION_TOKEN=${AWS_SESSION_TOKEN:-}"
+else
+  source $SCRIPT_DIR/lib/generate-aws-creds.sh
+fi
 
 BACKGROUND=${BACKGROUND:-""}
 
@@ -78,17 +87,13 @@ source $SCRIPT_DIR/lib/resolve-source-ip.sh
 
 echo "Running test suite..."
 
-# get current IDs
-USER_ID=$(id -u)
-GROUP_ID=$(id -g)
-
 exit_code=0
 
 $CONTAINER_CLI run $background_args $dns_args \
   --name $container_name \
   -v $SCRIPT_DIR/../website/docs:/content \
   -v $SCRIPT_DIR/../manifests:/eks-workshop/manifests \
-  -e 'EKS_CLUSTER_NAME' -e 'AWS_REGION' -e 'RESOURCES_PRECREATED' -e 'INBOUND_CIDRS' \
+  -e 'EKS_CLUSTER_NAME' -e 'EKS_CLUSTER_AUTO_NAME' -e 'AWS_REGION' -e 'RESOURCES_PRECREATED' -e 'INBOUND_CIDRS' \
   $aws_credential_args $container_image -g "${actual_glob}" --hook-timeout 3600 --timeout 3600 $output_args ${AWS_EKS_WORKSHOP_TEST_FLAGS} || exit_code=$?
 
 if [ $exit_code -eq 0 ]; then

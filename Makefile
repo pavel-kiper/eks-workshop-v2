@@ -4,14 +4,27 @@ environment=''
 shell_command=''
 shell_simple_command=''
 glob='-'
+cluster='all'
 
 .PHONY: install
 install:
 	yarn install
 
+.PHONY: build
+build: install
+	yarn build
+
+.PHONY: warning
+warning:
+	@echo "Note: 'make serve' now does a full static build. For dev mode, use 'make start' instead."
+
 .PHONY: serve
-serve: install
+serve: warning build
 	yarn serve
+
+.PHONY: start
+start: install
+	yarn start
 
 .PHONY: tf-fmt
 tf-fmt:
@@ -37,13 +50,17 @@ reset-environment:
 delete-environment:
 	bash hack/shell.sh $(environment) delete-environment
 
+.PHONY: pre-provision
+pre-provision:
+	bash hack/pre-provision-resources.sh $(environment) $(action)
+
 .PHONY: create-infrastructure
 create-infrastructure:
-	bash hack/create-infrastructure.sh $(environment)
+	bash hack/create-infrastructure.sh $(environment) $(cluster)
 
 .PHONY: destroy-infrastructure
 destroy-infrastructure:
-	bash hack/destroy-infrastructure.sh $(environment)
+	bash hack/destroy-infrastructure.sh $(environment) $(cluster)
 
 .PHONY: deploy-ide
 deploy-ide:
@@ -56,3 +73,4 @@ destroy-ide:
 .PHONY: lint
 lint:
 	yarn lint
+

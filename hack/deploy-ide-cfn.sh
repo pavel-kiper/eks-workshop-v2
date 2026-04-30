@@ -10,13 +10,21 @@ outfile=$(mktemp)
 
 bash $SCRIPT_DIR/build-ide-cfn.sh $outfile
 
+REPOSITORY_OWNER=${REPOSITORY_OWNER:-"aws-samples"}
+REPOSITORY_NAME=${REPOSITORY_NAME:-"eks-workshop-v2"}
+REPOSITORY_REF=${REPOSITORY_REF:-"main"}
+
 source $SCRIPT_DIR/lib/resolve-source-ip.sh
 
 STACK_NAME="$EKS_CLUSTER_NAME-cfn"
 
 aws cloudformation deploy --stack-name "$STACK_NAME" \
   --capabilities CAPABILITY_NAMED_IAM --disable-rollback --template-file $outfile \
-  --parameter-overrides InboundCIDR="$INBOUND_CIDRS"
+  --parameter-overrides \
+    RepositoryOwner="$REPOSITORY_OWNER" \
+    RepositoryName="$REPOSITORY_NAME" \
+    RepositoryRef="$REPOSITORY_REF" \
+    InboundCIDR="$INBOUND_CIDRS"
 
 if [ -z "$CI" ]; then
   IDE_URL=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" \

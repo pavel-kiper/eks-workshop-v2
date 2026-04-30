@@ -46,6 +46,13 @@ variable "resources_precreated" {
 }
 
 # tflint-ignore: terraform_unused_declarations
+variable "eks_cluster_auto_id" {
+  description = "EKS Auto Mode cluster name"
+  type        = string
+  default     = "eks-workshop-auto"
+}
+
+# tflint-ignore: terraform_unused_declarations
 variable "inbound_cidrs" {
   description = "CIDR range to allowlist for inbound traffic"
   type        = string
@@ -56,12 +63,31 @@ data "aws_partition" "current" {}
 data "aws_caller_identity" "current" {}
 data "aws_region" "current" {}
 
+data "aws_eks_clusters" "available" {}
+
 data "aws_eks_cluster" "eks_cluster" {
-  name = var.eks_cluster_id
+  count = local.standard_cluster_exists ? 1 : 0
+  name  = var.eks_cluster_id
 }
 
 data "aws_eks_cluster_auth" "this" {
-  name = var.eks_cluster_id
+  count = local.standard_cluster_exists ? 1 : 0
+  name  = var.eks_cluster_id
+}
+
+locals {
+  standard_cluster_exists = contains(data.aws_eks_clusters.available.names, var.eks_cluster_id)
+  auto_cluster_exists     = contains(data.aws_eks_clusters.available.names, var.eks_cluster_auto_id)
+}
+
+data "aws_eks_cluster" "eks_cluster_auto" {
+  count = local.auto_cluster_exists ? 1 : 0
+  name  = var.eks_cluster_auto_id
+}
+
+data "aws_eks_cluster_auth" "this_auto" {
+  count = local.auto_cluster_exists ? 1 : 0
+  name  = var.eks_cluster_auto_id
 }
 
 provider "aws" {
@@ -71,25 +97,41 @@ provider "aws" {
 }
 
 provider "kubernetes" {
-  host                   = local.eks_cluster_endpoint
-  cluster_ca_certificate = base64decode(data.aws_eks_cluster.eks_cluster.certificate_authority[0].data)
-  token                  = data.aws_eks_cluster_auth.this.token
+  host                   = try(data.aws_eks_cluster.eks_cluster[0].endpoint, "https://localhost")
+  cluster_ca_certificate = try(base64decode(data.aws_eks_cluster.eks_cluster[0].certificate_authority[0].data), "")
+  token                  = try(data.aws_eks_cluster_auth.this[0].token, "")
+}
+
+provider "kubernetes" {
+  alias                  = "auto_mode"
+  host                   = try(data.aws_eks_cluster.eks_cluster_auto[0].endpoint, "https://localhost")
+  cluster_ca_certificate = try(base64decode(data.aws_eks_cluster.eks_cluster_auto[0].certificate_authority[0].data), "")
+  token                  = try(data.aws_eks_cluster_auth.this_auto[0].token, "")
 }
 
 provider "helm" {
   kubernetes {
-    host                   = local.eks_cluster_endpoint
-    cluster_ca_certificate = base64decode(data.aws_eks_cluster.eks_cluster.certificate_authority[0].data)
-    token                  = data.aws_eks_cluster_auth.this.token
+    host                   = try(data.aws_eks_cluster.eks_cluster[0].endpoint, "https://localhost")
+    cluster_ca_certificate = try(base64decode(data.aws_eks_cluster.eks_cluster[0].certificate_authority[0].data), "")
+    token                  = try(data.aws_eks_cluster_auth.this[0].token, "")
+  }
+}
+
+provider "helm" {
+  alias = "auto_mode"
+  kubernetes {
+    host                   = try(data.aws_eks_cluster.eks_cluster_auto[0].endpoint, "https://localhost")
+    cluster_ca_certificate = try(base64decode(data.aws_eks_cluster.eks_cluster_auto[0].certificate_authority[0].data), "")
+    token                  = try(data.aws_eks_cluster_auth.this_auto[0].token, "")
   }
 }
 
 provider "kubectl" {
   apply_retry_count      = 10
-  host                   = local.eks_cluster_endpoint
-  cluster_ca_certificate = base64decode(data.aws_eks_cluster.eks_cluster.certificate_authority[0].data)
+  host                   = try(data.aws_eks_cluster.eks_cluster[0].endpoint, "https://localhost")
+  cluster_ca_certificate = try(base64decode(data.aws_eks_cluster.eks_cluster[0].certificate_authority[0].data), "")
   load_config_file       = false
-  token                  = data.aws_eks_cluster_auth.this.token
+  token                  = try(data.aws_eks_cluster_auth.this[0].token, "")
 }
 
 locals {
@@ -98,12 +140,12 @@ locals {
     env        = var.eks_cluster_id
   }
 
-  eks_cluster_id            = data.aws_eks_cluster.eks_cluster.id
-  eks_oidc_issuer_url       = replace(data.aws_eks_cluster.eks_cluster.identity[0].oidc[0].issuer, "https://", "")
-  eks_cluster_endpoint      = data.aws_eks_cluster.eks_cluster.endpoint
-  eks_cluster_version       = data.aws_eks_cluster.eks_cluster.version
-  eks_oidc_provider_arn     = "arn:${data.aws_partition.current.partition}:iam::${data.aws_caller_identity.current.account_id}:oidc-provider/${local.eks_oidc_issuer_url}"
-  cluster_security_group_id = data.aws_eks_cluster.eks_cluster.vpc_config[0].cluster_security_group_id
+  eks_cluster_id            = try(data.aws_eks_cluster.eks_cluster[0].id, var.eks_cluster_id)
+  eks_oidc_issuer_url       = try(replace(data.aws_eks_cluster.eks_cluster[0].identity[0].oidc[0].issuer, "https://", ""), "")
+  eks_cluster_endpoint      = try(data.aws_eks_cluster.eks_cluster[0].endpoint, "")
+  eks_cluster_version       = try(data.aws_eks_cluster.eks_cluster[0].version, "")
+  eks_oidc_provider_arn     = try("arn:${data.aws_partition.current.partition}:iam::${data.aws_caller_identity.current.account_id}:oidc-provider/${local.eks_oidc_issuer_url}", "")
+  cluster_security_group_id = try(data.aws_eks_cluster.eks_cluster[0].vpc_config[0].cluster_security_group_id, "")
 
   addon_context = {
     aws_caller_identity_account_id = data.aws_caller_identity.current.account_id
