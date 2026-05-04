@@ -87,7 +87,7 @@ Now we can wait until the instance has reached a "synced" state:
 
 ```bash
 $ kubectl wait -o yaml webapplication/carts -n carts \
-  --for=condition=InstanceSynced=True --timeout=120s
+  --for=condition=ResourcesReady=True --timeout=120s
 ```
 
 Next, verify the components of the RGD are running:

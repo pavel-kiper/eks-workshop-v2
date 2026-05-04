@@ -90,7 +90,7 @@ Now we can wait until the instance has reached a "synced" state:
 
 ```bash
 $ kubectl wait -o yaml webapplicationdynamodb/carts -n carts \
-  --for=condition=InstanceSynced=True --timeout=120s
+  --for=condition=ResourcesReady=True --timeout=120s
 ```
 
 To verify that the DynamoDB table has been created, we can check the generated ACK resource:

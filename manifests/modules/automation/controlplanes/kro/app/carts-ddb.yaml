@@ -18,5 +18,5 @@ spec:
     RETAIL_CART_PERSISTENCE_DYNAMODB_TABLE_NAME: "eks-workshop-carts-kro"
 
   aws:
-    accountID: ${AWS_ACCOUNT_ID}
+    accountID: "${AWS_ACCOUNT_ID}"
     region: ${AWS_REGION}

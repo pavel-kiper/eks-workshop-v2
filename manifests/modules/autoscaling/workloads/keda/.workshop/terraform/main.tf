@@ -53,7 +53,7 @@ resource "kubernetes_manifest" "ui_alb" {
       }
     }
     "spec" = {
-      ingressClassName = "alb",
+      "ingressClassName" = "alb",
       "rules" = [{
         "http" = {
           paths = [{
