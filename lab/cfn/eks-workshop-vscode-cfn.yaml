@@ -315,7 +315,7 @@ Resources:
                   export ANALYTICS_ENDPOINT="${AnalyticsEndpoint}"
                   IMDS_TOKEN=$(curl -s -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
                   IDE_IP=$(curl -s -H "X-aws-ec2-metadata-token: $IMDS_TOKEN" http://169.254.169.254/latest/meta-data/public-ipv4)
-                  export INBOUND_CIDRS="${InboundCIDR},$IDE_IP/32"
+                  export BASE_INBOUND_CIDRS="${InboundCIDR},$IDE_IP/32"
 
                   curl -fsSL https://raw.githubusercontent.com/${RepositoryOwner}/${RepositoryName}/${RepositoryRef}/lab/scripts/installer.sh | bash
 

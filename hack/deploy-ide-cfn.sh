@@ -24,7 +24,7 @@ aws cloudformation deploy --stack-name "$STACK_NAME" \
     RepositoryOwner="$REPOSITORY_OWNER" \
     RepositoryName="$REPOSITORY_NAME" \
     RepositoryRef="$REPOSITORY_REF" \
-    InboundCIDR="$INBOUND_CIDRS"
+    InboundCIDR="$BASE_INBOUND_CIDRS"
 
 if [ -z "$CI" ]; then
   IDE_URL=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" \

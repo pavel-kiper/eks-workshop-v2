@@ -47,6 +47,18 @@ export EKS_CLUSTER_AUTO_NAME
 aws eks update-kubeconfig --name $EKS_CLUSTER_AUTO_NAME --alias eks-workshop-auto 2>/dev/null || true
 aws eks update-kubeconfig --name $EKS_CLUSTER_NAME --alias default --user-alias default 2>/dev/null || true
 
+INBOUND_CIDRS="${BASE_INBOUND_CIDRS}"
+for cluster in "$EKS_CLUSTER_NAME" "$EKS_CLUSTER_AUTO_NAME"; do
+  ip=$(aws ec2 describe-nat-gateways \
+    --filter "Name=tag:created-by,Values=eks-workshop-v2" "Name=tag:env,Values=${cluster}" \
+    --query "NatGateways[0].NatGatewayAddresses[0].PublicIp" --output text 2>/dev/null) || continue
+  if [ "$ip" != "None" ] && [ -n "$ip" ]; then
+    INBOUND_CIDRS="${INBOUND_CIDRS:+${INBOUND_CIDRS},}${ip}/32"
+  fi
+done
+
+echo "Resolved IPs: ${INBOUND_CIDRS}"
+
 module=$1
 
 repository_path="/eks-workshop/repository"
@@ -327,6 +339,7 @@ if [ ! -z "$module" ]; then
 fi
 
 terraform -chdir="$tf_dir" output -json | jq -r '.environment.value | select(. != null)' > ~/.bashrc.d/workshop-env.bash
+echo "export INBOUND_CIDRS='${INBOUND_CIDRS}'" >> ~/.bashrc.d/workshop-env.bash
 
 # Node groups
 expected_size_config="$EKS_DEFAULT_MNG_MIN $EKS_DEFAULT_MNG_MAX $EKS_DEFAULT_MNG_DESIRED"

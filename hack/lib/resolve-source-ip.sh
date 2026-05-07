@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Resolves SOURCE_IP_ADDRESS to INBOUND_CIDRS
+# Resolves SOURCE_IP_ADDRESS to BASE_INBOUND_CIDRS
 # If SOURCE_IP_ADDRESS is blank or "auto", resolves the current public IP
 # Otherwise uses the provided value verbatim
 
@@ -11,5 +11,5 @@ else
   echo "Using provided source IP address: ${SOURCE_IP_ADDRESS}"
 fi
 
-export INBOUND_CIDRS="${SOURCE_IP_ADDRESS}/32"
-echo "Inbound CIDRs: ${INBOUND_CIDRS}"
+export BASE_INBOUND_CIDRS="${SOURCE_IP_ADDRESS}/32"
+echo "Inbound CIDRs: ${BASE_INBOUND_CIDRS}"
